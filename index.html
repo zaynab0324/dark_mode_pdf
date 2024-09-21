@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Afrah Zainab">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Dark Mode Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            background-color: #222;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            padding: 20px;
+            text-align: center;
+            background-color: #070707;
+            border-bottom: 3px solid aquamarine;
+        }
+        h1 {
+            font-size: 36px;
+            margin: 0;
+            background: linear-gradient(90deg, #db21cc, #0ad882);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
+        }
+        h3 {
+            font-size: 18px;
+            font-weight: lighter;
+            color: aquamarine;
+            text-align: center;
+        }
+        #custom-upload {
+            display: inline-block;
+            background-color: #444;
+            color: #fff;
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid #555;
+            border-radius: 5px;
+            font-size: 16px;
+            margin-top: 20px;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        #custom-upload:hover {
+            background-color: #070707;
+            border-color: aquamarine;
+        }
+        #file-upload {
+            display: none;
+        }
+        #save-pdf {
+            border-radius: 5px;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: #444;
+            color: #fff;
+            border: 1px solid blanchedalmond;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            z-index: 1000;
+        }
+        #save-pdf:hover {
+            background-color: #070707;
+            color: rgb(189, 255, 127);
+            border-color: #e4e713;
+        }
+        #pdf-render {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px auto;
+            max-width: 90vw; /* Make sure it doesn't overflow on small screens */
+        }
+        #pdf-render canvas {
+            width: 100%; /* Make the canvas responsive */
+            height: auto;
+            margin-bottom: 20px;
+        }
+        details {
+            text-align: center;
+            margin: 20px;
+            font-size: 16px;
+            background-color: #333;
+            color: aquamarine;
+            border-radius: 5px;
+            padding: 10px;
+            cursor: pointer;
+        }
+        details summary {
+            cursor: pointer;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            background-color: #070707;
+            color: #fff;
+            font-size: 14px;
+            border-top: 1px solid aquamarine;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>"Illuminate the Dark: Transform Your PDFs with Dark Mode Elegance!"</h1>
+</header>
+
+<details>
+    <summary></summary>
+    Kya brightness se aapki b aankh ka bhosda horaha hai ?? then convert it to dark mode and have healthy eyesight!!..:)
+</details>
+
+<div style="text-align: center;">
+    <label for="file-upload" id="custom-upload">Choose File</label>
+    <input type="file" id="file-upload" accept="application/pdf">
+</div>
+
+<div id="pdf-render"></div>
+<button id="save-pdf">Save Dark Mode PDF</button>
+
+<footer>
+    <p>&copy; 2024 Afrah Zainab. All rights reserved.</p>
+</footer>
+
+<script>
+    const fileInput = document.getElementById('file-upload');
+    const pdfRender = document.getElementById('pdf-render');
+    const saveButton = document.getElementById('save-pdf');
+
+    let canvases = [];
+
+    fileInput.addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.readAsArrayBuffer(file);
+            reader.onload = function() {
+                const pdfData = new Uint8Array(reader.result);
+                const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+
+                loadingTask.promise.then(function(pdf) {
+                    const numPages = pdf.numPages;
+
+                    pdfRender.innerHTML = '';
+                    canvases = [];
+
+                    for (let pageNumber = 1; pageNumber <= numPages; pageNumber++) {
+                        pdf.getPage(pageNumber).then(function(page) {
+                            const viewport = page.getViewport({ scale: 1.5 });
+
+                            const canvas = document.createElement('canvas');
+                            const context = canvas.getContext('2d');
+                            canvas.height = viewport.height;
+                            canvas.width = viewport.width;
+
+                            const renderContext = {
+                                canvasContext: context,
+                                viewport: viewport
+                            };
+
+                            page.render(renderContext).promise.then(function() {
+                                invertCanvasColors(context, canvas.width, canvas.height);
+                                canvases.push(canvas);
+                            });
+
+                            pdfRender.appendChild(canvas);
+                        });
+                    }
+                });
+            };
+        }
+    });
+
+    saveButton.addEventListener('click', function() {
+        if (canvases.length === 0) {
+            alert("No PDF pages rendered to save.");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF();
+
+        canvases.forEach((canvas, index) => {
+            const imgData = canvas.toDataURL('image/jpeg', 1.0);
+            const imgWidth = 210;
+            const pageHeight = 297;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            if (index > 0) {
+                pdf.addPage();
+            }
+
+            pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+
+            if (imgHeight > pageHeight) {
+                pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, pageHeight);
+            }
+        });
+
+        pdf.save('dark_mode_pdf.pdf');
+    });
+
+    function invertCanvasColors(context, width, height) {
+        const imageData = context.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = 255 - data[i];
+            data[i + 1] = 255 - data[i + 1];
+            data[i + 2] = 255 - data[i + 2];
+        }
+
+        context.putImageData(imageData, 0, 0);
+    }
+</script>
+
+</body>
+</html>
